@@ -8,6 +8,7 @@ dependencies = [
     "aiohttp>=3.11.13",
     "asyncpg>=0.30.0",
     "ccxt>=4.4.30",
+    "coloredlogs>=15.0.1",
     "dotenv>=0.9.9",
     "fastapi>=0.115.11",
     "hyperliquid-python-sdk>=0.10.1",
