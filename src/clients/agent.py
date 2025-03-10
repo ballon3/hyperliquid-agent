@@ -22,6 +22,7 @@ TOKEN_CONTRACTS = {
     "MATIC": "0x7D1Afa7B718fb893dB30A3aBc0Cfc608aACfeBB0",
 }
 
+
 class TradingAgent:
     """AI-powered trading agent using LangChain with persistent memory (pgvector)."""
 
@@ -40,20 +41,22 @@ class TradingAgent:
             use_jsonb=True,
         )
 
-        self.memory = VectorStoreRetrieverMemory(retriever=self.vectorstore.as_retriever())
+        self.memory = VectorStoreRetrieverMemory(
+            retriever=self.vectorstore.as_retriever()
+        )
 
         # Define LangChain tools
         self.tools = [
             Tool(
                 name="Risk Assessment",
                 func=self.assess_risk,
-                description="Analyzes cryptocurrency risk and returns a score (0-100)."
+                description="Analyzes cryptocurrency risk and returns a score (0-100).",
             ),
             Tool(
                 name="Trade Execution",
                 func=self.execute_trades,
-                description="Executes trades based on risk assessment and budget allocation."
-            )
+                description="Executes trades based on risk assessment and budget allocation.",
+            ),
         ]
 
         # Initialize LangChain Agent
@@ -63,33 +66,46 @@ class TradingAgent:
             tools=self.tools,
             llm=self.llm,
             memory=self.memory,
-            verbose=True
+            verbose=True,
         )
 
     async def assess_risk(self, tokens):
         """Assess risk and store embeddings in pgvector for future retrieval."""
         conn = await asyncpg.connect(self.db_url)
 
-        past_risks = await conn.fetch("SELECT token, risk_score, embedding FROM risk_assessments WHERE token = ANY($1)", list(tokens.keys()))
-        risk_memory = {record["token"]: (record["risk_score"], np.array(record["embedding"])) for record in past_risks}
+        past_risks = await conn.fetch(
+            "SELECT token, risk_score, embedding FROM risk_assessments WHERE token = ANY($1)",
+            list(tokens.keys()),
+        )
+        risk_memory = {
+            record["token"]: (record["risk_score"], np.array(record["embedding"]))
+            for record in past_risks
+        }
 
         openai.api_key = self.openai_api_key
 
         response = openai.ChatCompletion.create(
             model="gpt-4-turbo",
             messages=[
-                {"role": "system", "content": "Analyze risk scores based on past embeddings and market trends."},
+                {
+                    "role": "system",
+                    "content": "Analyze risk scores based on past embeddings and market trends.",
+                },
                 {"role": "user", "content": f"Past risk data: {risk_memory}"},
-                {"role": "user", "content": f"Assess risk for these tokens: {tokens}"}
-            ]
+                {"role": "user", "content": f"Assess risk for these tokens: {tokens}"},
+            ],
         )
 
         risk_data = json.loads(response["choices"][0]["message"]["content"])
-        risk_assessment = {token["name"]: token["risk_score"] for token in risk_data["tokens"]}
+        risk_assessment = {
+            token["name"]: token["risk_score"] for token in risk_data["tokens"]
+        }
 
         async with conn.transaction():
             for token, risk_score in risk_assessment.items():
-                embedding = self.embeddings.embed_query(json.dumps({"token": token, "risk_score": risk_score}))
+                embedding = self.embeddings.embed_query(
+                    json.dumps({"token": token, "risk_score": risk_score})
+                )
                 await conn.execute(
                     """
                     INSERT INTO risk_assessments (token, risk_score, embedding)
@@ -97,13 +113,15 @@ class TradingAgent:
                     ON CONFLICT (token) DO UPDATE 
                     SET risk_score = EXCLUDED.risk_score, embedding = EXCLUDED.embedding
                     """,
-                    token, risk_score, embedding
+                    token,
+                    risk_score,
+                    embedding,
                 )
 
                 # Store in LangChain Memory (pgvector)
                 self.vectorstore.add_texts(
                     texts=[f"Risk assessment for {token}: {risk_score}"],
-                    metadatas=[{"token": token, "risk_score": risk_score}]
+                    metadatas=[{"token": token, "risk_score": risk_score}],
                 )
 
         await conn.close()
@@ -114,7 +132,9 @@ class TradingAgent:
         tradable_tokens = {}
 
         for token, contract in TOKEN_CONTRACTS.items():
-            metadata = await self.alchemy.get_token_metadata(contract)  # ✅ Use contract address
+            metadata = await self.alchemy.get_token_metadata(
+                contract
+            )  # ✅ Use contract address
 
             # Log the response for debugging
             logger.info(f"Metadata response for {token}: {metadata}")
@@ -132,21 +152,33 @@ class TradingAgent:
 
     async def execute_trades(self, tokens_with_risk, budget):
         """Decide and execute trades based on risk assessment and memory retrieval."""
-        past_trades = self.vectorstore.as_retriever().get_relevant_documents("past trade")
-        
+        past_trades = self.vectorstore.as_retriever().get_relevant_documents(
+            "past trade"
+        )
+
         executed_trades = []
         for token, risk_score in tokens_with_risk.items():
             if risk_score < 40:  # Low-risk tokens
                 size = budget * 0.1  # Allocate 10% per trade
                 price = 100  # Placeholder price
-                result = self.hyperliquid.place_order(token, is_buy=True, price=price, size=size)
+                result = self.hyperliquid.place_order(
+                    token, is_buy=True, price=price, size=size
+                )
 
-                executed_trades.append({"token": token, "risk_score": risk_score, "result": result})
+                executed_trades.append(
+                    {"token": token, "risk_score": risk_score, "result": result}
+                )
 
                 # Store trade decision as an embedding
                 self.vectorstore.add_texts(
                     texts=[f"Trade executed for {token} at {price} with size {size}"],
-                    metadatas=[{"token": token, "risk_score": risk_score, "trade_result": result}]
+                    metadatas=[
+                        {
+                            "token": token,
+                            "risk_score": risk_score,
+                            "trade_result": result,
+                        }
+                    ],
                 )
 
         return executed_trades

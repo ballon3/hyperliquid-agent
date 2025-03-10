@@ -9,6 +9,7 @@ from src.config.settings import settings
 
 # NAIVE No Agent framework
 
+
 class TradingAgent:
     """Automated trading agent with memory for risk assessments and trade decisions."""
 
@@ -38,8 +39,14 @@ class TradingAgent:
         await register_vector(conn)
 
         # Retrieve previous risk assessments
-        past_risks = await conn.fetch("SELECT token, risk_score, embedding FROM risk_assessments WHERE token = ANY($1)", list(tokens.keys()))
-        risk_memory = {record["token"]: (record["risk_score"], np.array(record["embedding"])) for record in past_risks}
+        past_risks = await conn.fetch(
+            "SELECT token, risk_score, embedding FROM risk_assessments WHERE token = ANY($1)",
+            list(tokens.keys()),
+        )
+        risk_memory = {
+            record["token"]: (record["risk_score"], np.array(record["embedding"]))
+            for record in past_risks
+        }
 
         openai.api_key = self.openai_api_key
         function_definitions = [
@@ -55,40 +62,57 @@ class TradingAgent:
                                 "type": "object",
                                 "properties": {
                                     "name": {"type": "string"},
-                                    "risk_score": {"type": "integer"}
+                                    "risk_score": {"type": "integer"},
                                 },
-                                "required": ["name", "risk_score"]
-                            }
+                                "required": ["name", "risk_score"],
+                            },
                         }
                     },
-                    "required": ["tokens"]
-                }
+                    "required": ["tokens"],
+                },
             }
         ]
 
-        messages = [{"role": "system", "content": "Analyze risk scores based on past embeddings and market trends."}]
+        messages = [
+            {
+                "role": "system",
+                "content": "Analyze risk scores based on past embeddings and market trends.",
+            }
+        ]
         if risk_memory:
-            messages.append({"role": "user", "content": f"Past risk data: {risk_memory}"})
-        
-        messages.append({"role": "user", "content": f"Assess the risk for these tokens: {tokens}"})
+            messages.append(
+                {"role": "user", "content": f"Past risk data: {risk_memory}"}
+            )
+
+        messages.append(
+            {"role": "user", "content": f"Assess the risk for these tokens: {tokens}"}
+        )
 
         response = openai.ChatCompletion.create(
             model="gpt-4-turbo",
             messages=messages,
             functions=function_definitions,
-            function_call={"name": "get_risk_assessment"}
+            function_call={"name": "get_risk_assessment"},
         )
 
-        risk_data = json.loads(response["choices"][0]["message"]["function_call"]["arguments"])
-        risk_assessment = {token["name"]: token["risk_score"] for token in risk_data["tokens"]}
+        risk_data = json.loads(
+            response["choices"][0]["message"]["function_call"]["arguments"]
+        )
+        risk_assessment = {
+            token["name"]: token["risk_score"] for token in risk_data["tokens"]
+        }
 
         # Store embeddings for future memory
         async with conn.transaction():
             for token, risk_score in risk_assessment.items():
-                embedding = np.random.rand(768).tolist()  # Placeholder, replace with OpenAI embedding
+                embedding = np.random.rand(
+                    768
+                ).tolist()  # Placeholder, replace with OpenAI embedding
                 await conn.execute(
                     "INSERT INTO risk_assessments (token, risk_score, embedding) VALUES ($1, $2, $3) ON CONFLICT (token) DO UPDATE SET risk_score = EXCLUDED.risk_score, embedding = EXCLUDED.embedding",
-                    token, risk_score, embedding
+                    token,
+                    risk_score,
+                    embedding,
                 )
 
         await conn.close()
@@ -97,20 +121,33 @@ class TradingAgent:
     async def execute_trades(self, tokens_with_risk, budget):
         """Decide and execute trades based on risk assessment and past decisions."""
         executed_trades = []
-        
+
         for token, risk_score in tokens_with_risk.items():
             if risk_score < 40:  # Low-risk tokens
                 size = budget * 0.1  # Allocate 10% of budget per trade
                 price = 100  # Placeholder price
-                result = self.hyperliquid.place_order(token, is_buy=True, price=price, size=size)
-                executed_trades.append({"token": token, "risk_score": risk_score, "result": result})
+                result = self.hyperliquid.place_order(
+                    token, is_buy=True, price=price, size=size
+                )
+                executed_trades.append(
+                    {"token": token, "risk_score": risk_score, "result": result}
+                )
 
         return executed_trades
 
     async def retrieve_trade_history(self):
         """Retrieve past trade decisions and risk assessments from database."""
         conn = await asyncpg.connect(self.db_url)
-        records = await conn.fetch("SELECT token, risk_score, embedding FROM risk_assessments")
+        records = await conn.fetch(
+            "SELECT token, risk_score, embedding FROM risk_assessments"
+        )
         await conn.close()
 
-        return [{"token": record["token"], "risk_score": record["risk_score"], "embedding": json.loads(record["embedding"])} for record in records]
+        return [
+            {
+                "token": record["token"],
+                "risk_score": record["risk_score"],
+                "embedding": json.loads(record["embedding"]),
+            }
+            for record in records
+        ]

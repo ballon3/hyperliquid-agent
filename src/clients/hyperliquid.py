@@ -5,6 +5,7 @@ from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+
 class HyperliquidClient:
     """Handles spot trading for BTC, ETH, and SOL using CCXT with Hyperliquid."""
 
@@ -12,10 +13,12 @@ class HyperliquidClient:
         self.wallet = settings.HYPERLIQUID_ADDRESS
         self.secret = settings.HYPERLIQUID_PRIVATE_KEY
         self.testnet = testnet
-        self.exchange = ccxt.hyperliquid({
-            "walletAddress": self.wallet,
-            "privateKey": self.secret,
-        })
+        self.exchange = ccxt.hyperliquid(
+            {
+                "walletAddress": self.wallet,
+                "privateKey": self.secret,
+            }
+        )
 
         if self.testnet:
             self.exchange.set_sandbox_mode(True)
@@ -49,7 +52,9 @@ class HyperliquidClient:
             if order_type == "limit":
                 price = self.exchange.load_markets()[asset]["info"]["midPx"]
 
-            order = self.exchange.create_order(asset, order_type, side, amount, price=price)
+            order = self.exchange.create_order(
+                asset, order_type, side, amount, price=price
+            )
             logger.info(f"Placed {side.upper()} order for {amount} {asset} at {price}")
             return order
         except Exception as e:

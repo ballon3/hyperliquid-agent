@@ -11,6 +11,7 @@ from clients.alchemy import AlchemyClient
 from clients.hyperliquid_v1 import HyperliquidClient
 from config.settings import settings
 
+
 class TradingAgent:
     """Langraph-powered trading agent for Hyperliquid with memory and autonomous execution."""
 
@@ -55,7 +56,9 @@ class TradingAgent:
         async def decide_trade(state):
             """Decide whether to execute trades based on risk assessment."""
             risk_assessment = state["risk_assessment"]
-            trades = {token: score for token, score in risk_assessment.items() if score < 40}
+            trades = {
+                token: score for token, score in risk_assessment.items() if score < 40
+            }
             state["trades"] = trades
             return state
 
@@ -70,7 +73,9 @@ class TradingAgent:
         @graph.step()
         async def store_trade_memory(state):
             """Store trade decisions and risk assessments in pgvector for future reference."""
-            await self.store_embeddings(state["risk_assessment"], state["executed_trades"])
+            await self.store_embeddings(
+                state["risk_assessment"], state["executed_trades"]
+            )
             return state
 
         # Define workflow connections
@@ -99,21 +104,32 @@ class TradingAgent:
         """Assess risk using OpenAI and retrieve past risk embeddings from pgvector."""
         conn = await asyncpg.connect(self.db_url)
 
-        past_risks = await conn.fetch("SELECT token, risk_score, embedding FROM risk_assessments WHERE token = ANY($1)", list(tokens.keys()))
-        risk_memory = {record["token"]: (record["risk_score"], np.array(record["embedding"])) for record in past_risks}
+        past_risks = await conn.fetch(
+            "SELECT token, risk_score, embedding FROM risk_assessments WHERE token = ANY($1)",
+            list(tokens.keys()),
+        )
+        risk_memory = {
+            record["token"]: (record["risk_score"], np.array(record["embedding"]))
+            for record in past_risks
+        }
 
         openai.api_key = self.openai_api_key
         response = openai.ChatCompletion.create(
             model="gpt-4-turbo",
             messages=[
-                {"role": "system", "content": "Analyze risk scores based on past embeddings and market trends."},
+                {
+                    "role": "system",
+                    "content": "Analyze risk scores based on past embeddings and market trends.",
+                },
                 {"role": "user", "content": f"Past risk data: {risk_memory}"},
-                {"role": "user", "content": f"Assess risk for these tokens: {tokens}"}
-            ]
+                {"role": "user", "content": f"Assess risk for these tokens: {tokens}"},
+            ],
         )
 
         risk_data = json.loads(response["choices"][0]["message"]["content"])
-        risk_assessment = {token["name"]: token["risk_score"] for token in risk_data["tokens"]}
+        risk_assessment = {
+            token["name"]: token["risk_score"] for token in risk_data["tokens"]
+        }
 
         await conn.close()
         return risk_assessment
@@ -124,8 +140,12 @@ class TradingAgent:
         for token, risk_score in tokens_with_risk.items():
             size = budget * 0.1  # Allocate 10% per trade
             price = 100  # Placeholder price
-            result = self.hyperliquid.place_order(token, is_buy=True, price=price, size=size)
-            executed_trades.append({"token": token, "risk_score": risk_score, "result": result})
+            result = self.hyperliquid.place_order(
+                token, is_buy=True, price=price, size=size
+            )
+            executed_trades.append(
+                {"token": token, "risk_score": risk_score, "result": result}
+            )
 
         return executed_trades
 
@@ -135,16 +155,20 @@ class TradingAgent:
 
         async with conn.transaction():
             for token, risk_score in risk_assessment.items():
-                embedding = self.embeddings.embed_query(json.dumps({"token": token, "risk_score": risk_score}))
+                embedding = self.embeddings.embed_query(
+                    json.dumps({"token": token, "risk_score": risk_score})
+                )
                 await conn.execute(
                     "INSERT INTO risk_assessments (token, risk_score, embedding) VALUES ($1, $2, $3) ON CONFLICT (token) DO UPDATE SET risk_score = EXCLUDED.risk_score, embedding = EXCLUDED.embedding",
-                    token, risk_score, embedding
+                    token,
+                    risk_score,
+                    embedding,
                 )
 
                 # Store in LangChain Memory (pgvector)
                 self.vectorstore.add_texts(
                     texts=[f"Risk assessment for {token}: {risk_score}"],
-                    metadatas=[{"token": token, "risk_score": risk_score}]
+                    metadatas=[{"token": token, "risk_score": risk_score}],
                 )
 
         await conn.close()
@@ -152,4 +176,3 @@ class TradingAgent:
     async def run_graph(self):
         """Execute the entire Langraph trading workflow."""
         return await self.graph.run()
-
