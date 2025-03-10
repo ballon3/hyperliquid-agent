@@ -1,22 +1,138 @@
-# Spectral RnD 2
+# **Hyperliquid Trading Bot 🚀**
 
-## ✅ Stack
+## **📌 Overview**
+This is an **automated trading bot** that executes **spot trades** on **Hyperliquid** for **multiple assets**, leveraging:
+- **FastAPI** for an API interface  
+- **Swarm AI Agents** for **risk assessment & trade execution**  
+- **CCXT** to interact with **Hyperliquid's exchange**  
+- **Dynamic Asset Tracking** (Add/remove assets dynamically to a watchlist)  
+- **Automated Trade Execution** (Buy/Sell based on **risk scores**)  
+- **Precision Rounding for Hyperliquid Orders** (Avoids **decimal & min-trade-size errors**)  
 
-1. Hyperliquid API → Fetch options, execute trades.
-2. Alchemy API (optional) → On-chain analytics (whale movements, token flows).
-3. Python + FastAPI → Async server & execution.
-4. PostgreSQL + pgvector → Store past trades, embed LLM insights.
-5. OpenAI API → Future LLM-driven trade suggestions.
+---
 
-## Agent Architecture
+## **🛠️ Setup**
+### **1️⃣ Clone the repository**
+```sh
+git clone https://github.com/ballon3/spectral-rnd2.git
+cd spectral-rnd2
+```
 
-1. check assets over 20m market cap
-2. determine risk assesments for list of tokens of 30m market cap
-3. make decision for trade options with allocated budget
-4. If make trade save to db embeddings
+### **2️⃣ Create and Activate Virtual Environment**
+```sh
+uv -m venv .venv
+source .venv/bin/activate  # On Mac/Linux
+# OR
+.venv\Scripts\activate  # On Windows
+```
 
-## Agent Methods
+### **3️⃣ Install Dependencies**
+```sh
+pip install -r requirements.txt
+```
 
-1. function calling
-2. structured output (each coin has a risk assesment)
-3. RAG Database embeddings of risk assesment and trade decisions
+### **4️⃣ Configure Environment Variables**
+Create a `.env` file in the root directory:
+```ini
+HYPERLIQUID_API_KEY=your_api_key
+HYPERLIQUID_PRIVATE_KEY=your_secret
+HYPERLIQUID_ADDRESS=agent_address
+HYPERLIQUID_WALLET_ADDRESS=your_wallet_address
+HYPERLIQUID_API_URL="https://api.hyperliquid-testnet.xyz"
+OPENAI_API_KEY=your_openai_key
+```
+
+### **5️⃣ Start FastAPI Server**
+```sh
+uvicorn src.api.main:app --reload
+```
+
+---
+
+## **🚀 Features**
+### ✅ **Automated Trading Loop**
+- Fetches market data every **minute** 📈  
+- Runs **risk assessments** via **Swarm AI** 🤖  
+- Decides whether to **Buy, Sell, or Hold** ⚖️  
+- **Executes trades** dynamically using **CCXT**  
+
+### ✅ **Dynamic Asset Tracking**
+- **Add new assets** via API:  
+  ```sh
+  curl -X POST "http://127.0.0.1:8000/add-asset/PURR"
+  ```
+- **Remove assets** from the watchlist:
+  ```sh
+  curl -X POST "http://127.0.0.1:8000/remove-asset/PURR/USDC:USDC"
+  ```
+
+### ✅ **Swarm AI Agents**
+- **Risk Assessment Agent** evaluates **volatility, volume & liquidity**  
+- **Trade Execution Agent** determines **buy/sell strategy**  
+
+### ✅ **Hyperliquid-Compatible Trade Execution**
+- **Ensures minimum trade value ($10)** 💰  
+- **Automatically adjusts decimal precision (`szDecimals`)** ✅  
+- **Prevents order failures due to incorrect rounding**  
+
+---
+
+## **📡 API Endpoints**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/start` | Starts trading loop |
+| `POST` | `/stop` | Stops trading loop |
+| `POST` | `/add-asset/{symbol}` | Adds an asset to the watchlist |
+| `POST` | `/remove-asset/{symbol}` | Removes an asset from the watchlist |
+| `GET` | `/watchlist` | Returns current watchlist |
+| `GET` | `/trades` | Returns executed trades |
+| `GET` | `/status` | Returns trading bot status |
+
+---
+
+## **🛠 Next Steps: Advanced Features**
+### **1️⃣ Context Memory with `pgvector` (RAG)**
+📌 **Purpose:** Store **risk assessments & trade history** in a **PostgreSQL vector database** to enhance **decision-making**.
+- ✅ **Memory of past trades & risk assessments**  
+- ✅ **Retrieve past risk data for trend analysis**  
+- ✅ **Use `pgvector` embeddings for trade pattern recognition**  
+
+🚀 **Implementation Plan:**
+1. **Store each risk assessment & trade in `pgvector`**  
+2. **Retrieve past assessments for a given asset**  
+3. **Compare historical data to current market trends**  
+
+---
+
+### **2️⃣ Sentiment Analysis Agent 🧠**
+📌 **Purpose:** Analyze **crypto news sentiment** to **adjust trade strategy** dynamically.  
+- ✅ Fetch **real-time news & tweets**  
+- ✅ AI-powered **sentiment scoring**  
+- ✅ Adjust **risk models based on market sentiment**  
+
+🚀 **Implementation Plan:**
+1. **Fetch news from APIs (e.g., CoinGecko, Twitter, Reddit, NewsAPI)**  
+2. **Use OpenAI's LLM to extract sentiment (positive/neutral/negative)**  
+3. **Modify risk scoring based on sentiment trends**  
+
+---
+
+### **3️⃣ More Robust Trading Strategy 📈**
+📌 **Purpose:** Move beyond **simple buy/sell triggers** and add **more factors**:
+- ✅ **Volatility tracking**
+- ✅ **Moving average strategy (SMA, EMA)**
+- ✅ **Trade volume analysis**
+- ✅ **Multi-layered AI models (Price prediction + Risk assessment)**  
+
+🚀 **Implementation Plan:**
+1. **Implement SMA & EMA crossover strategies**  
+2. **Detect volume spikes for trade signals**  
+3. **Use AI models to forecast price movement**  
+
+---
+
+## **🚀 Ready to Trade?**
+```sh
+uvicorn src.api.main:app --reload
+```
+✅ Start trading, track performance, and integrate **next-gen AI trading strategies!** 🚀

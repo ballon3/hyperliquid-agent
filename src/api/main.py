@@ -44,6 +44,7 @@ trade_execution_agent = Agent(
 import decimal
 from decimal import Decimal, ROUND_UP
 
+
 def execute_trades(trade_decisions):
     """Executes trades while ensuring each order meets Hyperliquid's $10 minimum trade requirement."""
     global executed_trades_log
@@ -61,19 +62,29 @@ def execute_trades(trade_decisions):
         # Fetch latest price
         try:
             ticker = hyperliquid.exchange.fetch_ticker(asset)
-            latest_price = Decimal(str(ticker['last']))  # Convert to Decimal for precision
+            latest_price = Decimal(
+                str(ticker["last"])
+            )  # Convert to Decimal for precision
         except Exception as e:
             logger.error(f"Error fetching price for {asset}: {e}")
             continue
 
         # ✅ Ensure minimum trade value of $10
-        min_trade_size = (Decimal("10") / latest_price).quantize(Decimal("0.000001"), rounding=ROUND_UP)
-        logger.info(f"Calculated min trade size for {asset}: {min_trade_size} (latest price: {latest_price})")
+        min_trade_size = (Decimal("10") / latest_price).quantize(
+            Decimal("0.000001"), rounding=ROUND_UP
+        )
+        logger.info(
+            f"Calculated min trade size for {asset}: {min_trade_size} (latest price: {latest_price})"
+        )
 
         # Execute trade
-        order = hyperliquid.place_order(asset, decision, float(min_trade_size), float(latest_price))
+        order = hyperliquid.place_order(
+            asset, decision, float(min_trade_size), float(latest_price)
+        )
         if order:
-            logger.info(f"Executed {decision.upper()} order for {min_trade_size} {asset} at {latest_price}")
+            logger.info(
+                f"Executed {decision.upper()} order for {min_trade_size} {asset} at {latest_price}"
+            )
             executed_trades.append(order)
             executed_trades_log.append(order)
         else:
@@ -89,9 +100,7 @@ def trading_loop():
         logger.info("\n---- Running Trading Cycle ----")
 
         # 1️⃣ Fetch Market Data
-        market_data = {
-            asset: hyperliquid.get_market_data(asset) for asset in watchlist
-        }
+        market_data = {asset: hyperliquid.get_market_data(asset) for asset in watchlist}
         logger.info(f"Market Data: {market_data}")
 
         # 2️⃣ Risk Assessment
@@ -105,23 +114,31 @@ def trading_loop():
         # 3️⃣ Trade Execution Decision
         trade_response = swarm_client.run(
             agent=trade_execution_agent,
-            messages=[{"role": "user", "content": f"Make trade decisions for risk: {risk_scores}"}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Make trade decisions for risk: {risk_scores}",
+                }
+            ],
         )
 
         # Ensure response is a dictionary (parse JSON if necessary)
         try:
             trade_decisions = json.loads(trade_response.messages[-1]["content"])
         except json.JSONDecodeError:
-            logger.warning("⚠️ Model response was not valid JSON. Falling back to manual parsing.")
+            logger.warning(
+                "⚠️ Model response was not valid JSON. Falling back to manual parsing."
+            )
 
             # Dynamically generate trade decisions for all assets in the watchlist
             trade_decisions = {
-                asset: "buy" if asset.split("/")[0] in trade_response.messages[-1]["content"] else
-                    "sell" if asset.split("/")[0] in trade_response.messages[-1]["content"] else
-                    "hold"
+                asset: "buy"
+                if asset.split("/")[0] in trade_response.messages[-1]["content"]
+                else "sell"
+                if asset.split("/")[0] in trade_response.messages[-1]["content"]
+                else "hold"
                 for asset in watchlist
             }
-
 
         logger.info(f"Trade Decisions (Parsed): {trade_decisions}")
 
@@ -168,10 +185,8 @@ async def add_asset(asset: str):
     if market_data:
         watchlist.add(formatted_asset)
         return {"status": f"Added {formatted_asset} to watchlist"}
-    
+
     return {"error": f"Asset {formatted_asset} is not tradable on Hyperliquid"}
-
-
 
 
 @app.post("/remove-asset/{asset}")

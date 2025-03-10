@@ -6,6 +6,7 @@ from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+
 class HyperliquidClient:
     """Handles spot trading for BTC, ETH, and SOL using CCXT with Hyperliquid."""
 
@@ -13,10 +14,12 @@ class HyperliquidClient:
         self.wallet = settings.HYPERLIQUID_ADDRESS
         self.secret = settings.HYPERLIQUID_PRIVATE_KEY
         self.testnet = testnet
-        self.exchange = ccxt.hyperliquid({
-            "walletAddress": self.wallet,
-            "privateKey": self.secret,
-        })
+        self.exchange = ccxt.hyperliquid(
+            {
+                "walletAddress": self.wallet,
+                "privateKey": self.secret,
+            }
+        )
 
         if self.testnet:
             self.exchange.set_sandbox_mode(True)
@@ -34,7 +37,6 @@ class HyperliquidClient:
             logger.error(f"Error fetching market data for {asset}: {e}")
             return None
 
-
     def place_order(self, asset, side, amount, price=None):
         """Place a spot limit or market order."""
         try:
@@ -42,7 +44,7 @@ class HyperliquidClient:
 
             if order_type == "market":
                 # Fetch latest price to set slippage-based price
-                latest_price = float(self.exchange.fetch_ticker(asset)['last'])
+                latest_price = float(self.exchange.fetch_ticker(asset)["last"])
                 slippage = 0.05  # Default 5% slippage
                 price = latest_price * (1 + slippage if side == "buy" else 1 - slippage)
                 price = round(price, 2)  # Round to 2 decimal places
@@ -52,16 +54,21 @@ class HyperliquidClient:
                 price = self.exchange.load_markets()[asset]["info"]["midPx"]
 
             # Ensure trade amount is at least $10 worth
-            min_trade_size = math.ceil((10 / float(price)) * 10000) / 10000  # Round up to 4 decimals
+            min_trade_size = (
+                math.ceil((10 / float(price)) * 10000) / 10000
+            )  # Round up to 4 decimals
 
-            order = self.exchange.create_order(asset, order_type, side, min_trade_size, price)
-            logger.info(f"Placed {side.upper()} order for {min_trade_size} {asset} at {price}")
+            order = self.exchange.create_order(
+                asset, order_type, side, min_trade_size, price
+            )
+            logger.info(
+                f"Placed {side.upper()} order for {min_trade_size} {asset} at {price}"
+            )
             return order
 
         except Exception as e:
             logger.error(f"Error placing order for {asset}: {e}")
             return None
-
 
     def cancel_all_orders(self, asset):
         """Cancel all open orders for a specific asset."""
