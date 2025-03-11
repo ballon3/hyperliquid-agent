@@ -126,7 +126,7 @@ class HyperliquidClient:
                     float(take_profit),
                     params={"triggerPrice": float(take_profit), "tpsl": "tp"}
                 )
-                logger.info(f"🎯 Take Profit Order: {tp_order}")
+                logger.info(f"🎯 Take Profit Order: {json.dumps(tp_order, indent=4)}")
 
             # ✅ Place Stop Loss Order (if applicable)
             if stop_loss:
@@ -138,7 +138,7 @@ class HyperliquidClient:
                     float(stop_loss),
                     params={"triggerPrice": float(stop_loss), "tpsl": "sl"}
                 )
-                logger.info(f"🛑 Stop Loss Order: {sl_order}")
+                logger.info(f"🛑 Stop Loss Order: {json.dumps(sl_order, indent=4)}")
 
             return main_order
 
