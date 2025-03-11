@@ -154,7 +154,7 @@ def trading_loop():
 
         # 2️⃣ Merge Market Data & Open Positions for Risk Assessment
         risk_input = {"market_data": market_data, "open_positions": open_positions}
-        logger.info(f"Risk Assessment Input: {json.dumps(risk_input, indent=4)}")
+        # logger.info(f"Risk Assessment Input: {json.dumps(risk_input, indent=4)}")
         # 3️⃣ Send Data to Risk Assessment Agent
         risk_response = swarm_client.run(
             agent=risk_assessment_agent,
