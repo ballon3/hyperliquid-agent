@@ -40,6 +40,46 @@ class HyperliquidClient:
             logger.error(f"Error fetching open positions: {e}")
             return {}
 
+    def get_open_positions(self):
+        """Fetch open positions for all assets in a concise, human-readable format."""
+        try:
+            positions = self.exchange.fetch_positions()
+            open_positions = {}
+
+            for pos in positions:
+                if float(pos.get("contracts", 0)) == 0:
+                    continue  # Skip if no active position
+
+                # Dynamically include only available fields
+                filtered_details = {key: pos[key] for key in [
+                    "symbol", "side", "contracts", "entryPrice", "leverage",
+                    "unrealizedPnl", "liquidationPrice"
+                ] if key in pos}
+
+                open_positions[pos["symbol"]] = filtered_details
+
+            # ✅ Log formatted output
+            if open_positions:
+                logger.info("\n📌 **Open Positions:**")
+                for asset, details in open_positions.items():
+                    logger.info(
+                        f"{asset} | {details.get('side', 'N/A').upper()} | "
+                        f"Size: {details.get('contracts', 'N/A')} | "
+                        f"Entry: {details.get('entryPrice', 'N/A')} | "
+                        f"Lev: {details.get('leverage', 'N/A')}x | "
+                        f"PnL: {details.get('unrealizedPnl', 'N/A')} | "
+                        f"Liquidation: {details.get('liquidationPrice', 'N/A')}"
+                    )
+            else:
+                logger.info("📭 No open positions found.")
+
+            return open_positions
+
+        except Exception as e:
+            logger.error(f"❌ Error fetching open positions: {e}")
+            return {}
+
+
     def get_market_data(self, asset):
         """Retrieve latest OHLCV data (Open, High, Low, Close, Volume)."""
         try:
@@ -49,9 +89,9 @@ class HyperliquidClient:
         except Exception as e:
             logger.error(f"Error fetching market data for {asset}: {e}")
             return None
-
+        
     def place_order(self, asset, side, amount, price=None, take_profit=None, stop_loss=None):
-        """Places a spot limit or market order with TP/SL settings."""
+        """Places a market/limit order and attaches TP/SL as separate conditional orders."""
         try:
             order_type = "limit" if price else "market"
 
@@ -69,29 +109,38 @@ class HyperliquidClient:
             # ✅ Ensure trade amount is at least $20 worth
             min_trade_size = (Decimal("20") / Decimal(str(price))).quantize(Decimal("0.000001"), rounding=ROUND_UP)
 
-            # ✅ Construct order params with TP/SL
-            order_params = {
-                "symbol": asset,
-                "type": order_type,
-                "side": side,
-                "amount": float(min_trade_size),
-                "price": float(price),
-                "params": {}
-            }
+            # ✅ Place the main order
+            logger.info(f"🛠️ Placing {side.upper()} order for {asset} at {price} (Size: {min_trade_size})")
+            main_order = self.exchange.create_order(
+                asset, order_type, side, float(min_trade_size), float(price)
+            )
+            logger.info(f"✅ Placed {side.upper()} order for {min_trade_size} {asset} at {price}")
 
+            # ✅ Place Take Profit Order (if applicable)
             if take_profit:
-                order_params["params"]["triggerPrice"] = float(take_profit)
-                order_params["params"]["tpsl"] = "tp"
+                tp_order = self.exchange.create_order(
+                    asset,
+                    "trigger",
+                    "sell" if side == "buy" else "buy",  # Inverse action for TP
+                    float(min_trade_size),
+                    float(take_profit),
+                    params={"triggerPrice": float(take_profit), "tpsl": "tp"}
+                )
+                logger.info(f"🎯 Take Profit Order: {json.dumps(tp_order, indent=4)}")
 
+            # ✅ Place Stop Loss Order (if applicable)
             if stop_loss:
-                order_params["params"]["triggerPrice"] = float(stop_loss)
-                order_params["params"]["tpsl"] = "sl"
+                sl_order = self.exchange.create_order(
+                    asset,
+                    "trigger",
+                    "sell" if side == "buy" else "buy",  # Inverse action for SL
+                    float(min_trade_size),
+                    float(stop_loss),
+                    params={"triggerPrice": float(stop_loss), "tpsl": "sl"}
+                )
+                logger.info(f"🛑 Stop Loss Order: {json.dumps(sl_order, indent=4)}")
 
-            logger.info(f"🛠️ Placing order with TP: {take_profit}, SL: {stop_loss} for {asset}")
-            order = self.exchange.create_order(**order_params)
-            
-            logger.info(f"✅ Placed {side.upper()} order for {min_trade_size} {asset} at {price} with TP {take_profit} and SL {stop_loss}")
-            return order
+            return main_order
 
         except Exception as e:
             logger.error(f"❌ Error placing order for {asset}: {e}")
