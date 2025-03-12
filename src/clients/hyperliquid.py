@@ -30,17 +30,6 @@ class HyperliquidClient:
         self.assets = ["BTC/USDC:USDC", "ETH/USDC:USDC", "SOL/USDC:USDC"]
 
     def get_open_positions(self):
-        """Fetch open positions for all assets."""
-        try:
-            positions = self.exchange.fetch_positions()
-            open_positions = {pos["symbol"]: pos for pos in positions if float(pos["contracts"]) != 0}
-            logger.info(f"Fetched open positions: {json.dumps(open_positions, indent=4)}")
-            return open_positions
-        except Exception as e:
-            logger.error(f"Error fetching open positions: {e}")
-            return {}
-
-    def get_open_positions(self):
         """Fetch open positions for all assets in a concise, human-readable format."""
         try:
             positions = self.exchange.fetch_positions()

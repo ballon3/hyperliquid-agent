@@ -1,15 +1,20 @@
 # **Hyperliquid Trading Bot 🚀**
 
 ## **📌 Overview**
-This is an **automated trading bot** that executes **spot trades** on **Hyperliquid** for **multiple assets**, leveraging:
+This is an **automated trading bot** that executes **spot and/or perp trades** on **Hyperliquid** for **multiple assets**, leveraging:
 - **FastAPI** for an API interface  
 - **Swarm AI Agents** for **risk assessment & trade execution**  
 - **CCXT** to interact with **Hyperliquid's exchange**  
 - **Dynamic Asset Tracking** (Add/remove assets dynamically to a watchlist)  
 - **Automated Trade Execution** (Buy/Sell based on **risk scores**)  
 - **Precision Rounding for Hyperliquid Orders** (Avoids **decimal & min-trade-size errors**)  
+- **Dev Branch includes additional LLM Agent architectures** a naive (no agent framework implementation), Langchain and pgvector rag based one and a more complex Langgraph non directed acyclic graph architecture
+- Used the swarm agent setup for general demo simplicity and conciseness and due to time constraints
 
 ---
+
+<img src="demo.gif" alt="Demo preview" width="600" />
+
 
 ## **🛠️ Setup**
 ### **1️⃣ Clone the repository**
@@ -71,7 +76,7 @@ uvicorn src.api.main:app --reload
 - **Trade Execution Agent** determines **buy/sell strategy**  
 
 ### ✅ **Hyperliquid-Compatible Trade Execution**
-- **Ensures minimum trade value ($10)** 💰  
+- **Ensures minimum trade value ($10) moved to min $20 positions** 💰  
 - **Automatically adjusts decimal precision (`szDecimals`)** ✅  
 - **Prevents order failures due to incorrect rounding**  
 
