@@ -25,7 +25,7 @@ cd spectral-rnd2
 
 ### **2️⃣ Create and Activate Virtual Environment**
 ```sh
-uv -m venv .venv
+uv venv .venv
 source .venv/bin/activate  # On Mac/Linux
 # OR
 .venv\Scripts\activate  # On Windows
@@ -33,15 +33,13 @@ source .venv/bin/activate  # On Mac/Linux
 
 ### **3️⃣ Install Dependencies**
 ```sh
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ### **4️⃣ Configure Environment Variables**
 Create a `.env` file in the root directory:
 ```ini
-HYPERLIQUID_API_KEY=your_api_key
 HYPERLIQUID_PRIVATE_KEY=your_secret
-HYPERLIQUID_ADDRESS=agent_address
 HYPERLIQUID_WALLET_ADDRESS=your_wallet_address
 HYPERLIQUID_API_URL="https://api.hyperliquid-testnet.xyz"
 OPENAI_API_KEY=your_openai_key
@@ -49,7 +47,7 @@ OPENAI_API_KEY=your_openai_key
 
 ### **5️⃣ Start FastAPI Server**
 ```sh
-uvicorn src.api.main:app --reload
+PYTHONPATH=src uvicorn src.api.main:app --reload
 ```
 
 ---
@@ -60,6 +58,10 @@ uvicorn src.api.main:app --reload
 - Runs **risk assessments** via **Swarm AI** 🤖  
 - Decides whether to **Buy, Sell, or Hold** ⚖️  
 - **Executes trades** dynamically using **CCXT**  
+- **Start trading bot** via API:  
+  ```sh
+  curl -X POST "http://127.0.0.1:8000/start"
+  ```
 
 ### ✅ **Dynamic Asset Tracking**
 - **Add new assets** via API:  
@@ -138,6 +140,6 @@ uvicorn src.api.main:app --reload
 
 ## **🚀 Ready to Trade?**
 ```sh
-uvicorn src.api.main:app --reload
+PYTHONPATH=src uvicorn src.api.main:app --reload
 ```
 ✅ Start trading, track performance, and integrate **next-gen AI trading strategies!** 🚀
